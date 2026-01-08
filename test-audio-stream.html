@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Audio Stream</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #08CB00;
+        }
+        audio {
+            width: 100%;
+            margin: 20px 0;
+        }
+        .info {
+            background: #333;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #08CB00;
+            color: #000;
+        }
+        .error {
+            background: #f44336;
+        }
+        button {
+            background: #08CB00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #06A800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Audio Stream Test</h1>
+        
+        <div class="info">
+            <strong>Stream URL:</strong><br>
+            <code id="streamUrl">http://localhost:3000/audio-tracks/c24442f5-8c31-4986-ba72-17f042144b3f/stream</code>
+        </div>
+
+        <h2>Test 1: HTML5 Audio Player</h2>
+        <audio id="audioPlayer" controls>
+            <source src="http://localhost:3000/audio-tracks/c24442f5-8c31-4986-ba72-17f042144b3f/stream" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+
+        <h2>Test 2: JavaScript Audio</h2>
+        <button onclick="testJavaScriptAudio()">▶️ Play with JavaScript</button>
+        <button onclick="stopAudio()">⏹️ Stop</button>
+        <button onclick="checkAudioFile()">🔍 Check File</button>
+        
+        <div id="status"></div>
+
+        <h2>Debug Info</h2>
+        <div id="debugInfo" class="info"></div>
+    </div>
+
+    <script>
+        const streamUrl = 'http://localhost:3000/audio-tracks/c24442f5-8c31-4986-ba72-17f042144b3f/stream';
+        let audio = new Audio();
+        
+        function showStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + (isError ? 'error' : 'success');
+            statusDiv.textContent = message;
+            console.log(message);
+        }
+
+        function showDebug(info) {
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${info}</div>`;
+        }
+
+        async function checkAudioFile() {
+            showDebug('Checking if audio file exists...');
+            try {
+                const response = await fetch(streamUrl, { method: 'HEAD' });
+                showDebug(`Response status: ${response.status}`);
+                showDebug(`Content-Type: ${response.headers.get('Content-Type')}`);
+                showDebug(`Content-Length: ${response.headers.get('Content-Length')} bytes`);
+                
+                if (response.ok) {
+                    showStatus('✅ Audio file exists and is accessible!');
+                } else {
+                    showStatus(`❌ Error: ${response.status} ${response.statusText}`, true);
+                }
+            } catch (error) {
+                showStatus(`❌ Network error: ${error.message}`, true);
+                showDebug(`Error: ${error}`);
+            }
+        }
+
+        function testJavaScriptAudio() {
+            showDebug('Creating new Audio object...');
+            audio = new Audio(streamUrl);
+            
+            audio.addEventListener('loadstart', () => {
+                showDebug('🔄 Loading started...');
+            });
+            
+            audio.addEventListener('loadedmetadata', () => {
+                showDebug(`✅ Metadata loaded - Duration: ${audio.duration}s`);
+            });
+            
+            audio.addEventListener('canplay', () => {
+                showDebug('✅ Can play - enough data loaded');
+            });
+            
+            audio.addEventListener('playing', () => {
+                showStatus('🎵 Audio is playing!');
+                showDebug('✅ Playing...');
+            });
+            
+            audio.addEventListener('pause', () => {
+                showDebug('⏸️ Paused');
+            });
+            
+            audio.addEventListener('ended', () => {
+                showDebug('🏁 Ended');
+            });
+            
+            audio.addEventListener('error', (e) => {
+                const errorMessages = {
+                    1: 'MEDIA_ERR_ABORTED - Playback aborted',
+                    2: 'MEDIA_ERR_NETWORK - Network error',
+                    3: 'MEDIA_ERR_DECODE - Decoding error',
+                    4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Format not supported'
+                };
+                const errorMsg = errorMessages[audio.error.code] || 'Unknown error';
+                showStatus(`❌ ${errorMsg}`, true);
+                showDebug(`Error code: ${audio.error.code}`);
+                showDebug(`Error message: ${audio.error.message}`);
+            });
+            
+            showDebug('Attempting to play...');
+            audio.play()
+                .then(() => {
+                    showStatus('✅ Play started successfully!');
+                })
+                .catch(error => {
+                    showStatus(`❌ Play failed: ${error.message}`, true);
+                    showDebug(`Play error: ${error}`);
+                });
+        }
+
+        function stopAudio() {
+            audio.pause();
+            audio.currentTime = 0;
+            showStatus('⏹️ Stopped');
+        }
+
+        // Auto-check on load
+        window.onload = () => {
+            showDebug('Page loaded');
+            checkAudioFile();
+        };
+    </script>
+</body>
+</html>

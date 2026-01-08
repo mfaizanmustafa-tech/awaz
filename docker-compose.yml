@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: awaz-pulse-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: awaz_pulse_root_2024
+      MYSQL_DATABASE: awaz_pulse
+      MYSQL_USER: awaz_user
+      MYSQL_PASSWORD: awaz_pass_2024
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database-init:/docker-entrypoint-initdb.d
+    networks:
+      - awaz-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # phpMyAdmin for database management
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: awaz-pulse-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: awaz_pulse_root_2024
+      MYSQL_ROOT_PASSWORD: awaz_pulse_root_2024
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - awaz-network
+
+  # Backend Application
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: awaz-pulse-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: awaz_user
+      DB_PASSWORD: awaz_pass_2024
+      DB_NAME: awaz_pulse
+      JWT_SECRET: your_jwt_secret_key_here
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql
+    networks:
+      - awaz-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: awaz-pulse-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - awaz-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  awaz-network:
+    driver: bridge

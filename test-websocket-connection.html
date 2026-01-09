@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Connection Tester - Awaz Pulse</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #10b981;
+        }
+
+        .status-indicator.disconnected {
+            background: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-connect { background: #10b981; }
+        .btn-disconnect { background: #ef4444; }
+        .btn-join { background: #3b82f6; }
+        .btn-leave { background: #f59e0b; }
+        .btn-start { background: #8b5cf6; }
+        .btn-stop { background: #ec4899; }
+
+        .events-log {
+            background: #1f2937;
+            color: #10b981;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .event-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-left: 3px solid #10b981;
+            padding-left: 15px;
+        }
+
+        .event-entry.error {
+            border-left-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .event-entry.info {
+            border-left-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .timestamp {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 WebSocket Connection Tester</h1>
+            <p>Test real-time streaming connections for Awaz Pulse</p>
+        </div>
+
+        <div class="status-card">
+            <h2>
+                <span class="status-indicator" id="statusIndicator"></span>
+                Connection Status: <span id="statusText">Disconnected</span>
+            </h2>
+            <p>Socket ID: <strong id="socketId">-</strong></p>
+        </div>
+
+        <div class="status-card">
+            <h3>Connection Controls</h3>
+            <div class="controls">
+                <button class="btn-connect" onclick="connect()">Connect</button>
+                <button class="btn-disconnect" onclick="disconnect()">Disconnect</button>
+            </div>
+
+            <h3 style="margin-top: 30px;">Stream Controls</h3>
+            <div class="input-group">
+                <label>Channel ID:</label>
+                <input type="text" id="channelId" placeholder="Enter channel ID" value="test-channel-123">
+            </div>
+            <div class="input-group">
+                <label>Stream ID:</label>
+                <input type="text" id="streamId" placeholder="Enter stream ID" value="test-stream-456">
+            </div>
+            <div class="input-group">
+                <label>Show Title:</label>
+                <input type="text" id="showTitle" placeholder="Enter show title" value="Test Show">
+            </div>
+            <div class="input-group">
+                <label>Host Name:</label>
+                <input type="text" id="hostName" placeholder="Enter host name" value="Test Host">
+            </div>
+
+            <div class="controls">
+                <button class="btn-join" onclick="joinStream()">Join Stream</button>
+                <button class="btn-leave" onclick="leaveStream()">Leave Stream</button>
+                <button class="btn-start" onclick="startStream()">Start Stream</button>
+                <button class="btn-stop" onclick="stopStream()">Stop Stream</button>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>Statistics</h3>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="eventsReceived">0</div>
+                    <div class="stat-label">Events Received</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="eventsSent">0</div>
+                    <div class="stat-label">Events Sent</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="listeners">0</div>
+                    <div class="stat-label">Listeners</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>Events Log</h3>
+            <button onclick="clearLog()" style="margin-bottom: 10px; background: #6b7280;">Clear Log</button>
+            <div class="events-log" id="eventsLog">
+                <div class="event-entry info">
+                    <span class="timestamp">[Ready]</span> Click "Connect" to start testing WebSocket connection
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let eventsReceived = 0;
+        let eventsSent = 0;
+
+        function updateStatus(connected) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const socketId = document.getElementById('socketId');
+
+            if (connected) {
+                indicator.className = 'status-indicator connected';
+                statusText.textContent = 'Connected';
+                socketId.textContent = socket.id;
+            } else {
+                indicator.className = 'status-indicator disconnected';
+                statusText.textContent = 'Disconnected';
+                socketId.textContent = '-';
+            }
+        }
+
+        function logEvent(message, type = 'success') {
+            const log = document.getElementById('eventsLog');
+            const entry = document.createElement('div');
+            entry.className = `event-entry ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+
+            if (type === 'success') {
+                eventsReceived++;
+                document.getElementById('eventsReceived').textContent = eventsReceived;
+            }
+        }
+
+        function incrementSent() {
+            eventsSent++;
+            document.getElementById('eventsSent').textContent = eventsSent;
+        }
+
+        function connect() {
+            if (socket?.connected) {
+                logEvent('Already connected!', 'info');
+                return;
+            }
+
+            logEvent('Connecting to WebSocket server...', 'info');
+            
+            socket = io('http://localhost:3000/streaming', {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5,
+            });
+
+            socket.on('connect', () => {
+                logEvent('✅ Connected successfully!', 'success');
+                updateStatus(true);
+            });
+
+            socket.on('disconnect', () => {
+                logEvent('❌ Disconnected', 'error');
+                updateStatus(false);
+            });
+
+            socket.on('connect_error', (error) => {
+                logEvent(`❌ Connection error: ${error.message}`, 'error');
+                updateStatus(false);
+            });
+
+            socket.on('stream:started', (data) => {
+                logEvent(`🎵 Stream started: ${JSON.stringify(data)}`, 'success');
+            });
+
+            socket.on('stream:stopped', (data) => {
+                logEvent(`⏹️ Stream stopped: ${JSON.stringify(data)}`, 'info');
+            });
+
+            socket.on('stream:metadata', (data) => {
+                logEvent(`📝 Metadata update: ${JSON.stringify(data)}`, 'success');
+            });
+
+            socket.on('stream:listeners', (data) => {
+                logEvent(`👥 Listener count: ${data.count}`, 'success');
+                document.getElementById('listeners').textContent = data.count;
+            });
+
+            socket.on('stream:live', (data) => {
+                logEvent(`🔴 Stream is live: ${JSON.stringify(data)}`, 'success');
+            });
+
+            socket.on('stream:offline', (data) => {
+                logEvent(`⚫ Stream is offline`, 'info');
+            });
+
+            socket.on('streams:active', (data) => {
+                logEvent(`📡 Active streams: ${data.length}`, 'success');
+            });
+        }
+
+        function disconnect() {
+            if (!socket?.connected) {
+                logEvent('Not connected!', 'error');
+                return;
+            }
+
+            socket.disconnect();
+            logEvent('Disconnecting...', 'info');
+        }
+
+        function joinStream() {
+            if (!socket?.connected) {
+                logEvent('Not connected! Connect first.', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            socket.emit('stream:join', { channelId, userId: 'test-user-123' });
+            logEvent(`🎧 Joining stream: ${channelId}`, 'info');
+            incrementSent();
+        }
+
+        function leaveStream() {
+            if (!socket?.connected) {
+                logEvent('Not connected!', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            socket.emit('stream:leave', { channelId });
+            logEvent(`👋 Leaving stream: ${channelId}`, 'info');
+            incrementSent();
+        }
+
+        function startStream() {
+            if (!socket?.connected) {
+                logEvent('Not connected! Connect first.', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            const streamId = document.getElementById('streamId').value;
+            const showTitle = document.getElementById('showTitle').value;
+            const hostName = document.getElementById('hostName').value;
+
+            socket.emit('stream:start', {
+                channelId,
+                streamId,
+                metadata: {
+                    showTitle,
+                    hostName,
+                    showType: 'music'
+                }
+            });
+            logEvent(`🎙️ Starting stream: ${channelId}`, 'info');
+            incrementSent();
+        }
+
+        function stopStream() {
+            if (!socket?.connected) {
+                logEvent('Not connected!', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            const streamId = document.getElementById('streamId').value;
+
+            socket.emit('stream:stop', { channelId, streamId });
+            logEvent(`⏹️ Stopping stream: ${channelId}`, 'info');
+            incrementSent();
+        }
+
+        function clearLog() {
+            document.getElementById('eventsLog').innerHTML = '';
+            eventsReceived = 0;
+            eventsSent = 0;
+            document.getElementById('eventsReceived').textContent = '0';
+            document.getElementById('eventsSent').textContent = '0';
+        }
+
+        // Initialize
+        updateStatus(false);
+    </script>
+</body>
+</html>

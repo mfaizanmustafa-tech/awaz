@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awaz Pulse - HLS Stream Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+        }
+        h1 {
+            color: #08CB00;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 2rem;
+        }
+        .player-container {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            margin-bottom: 1rem;
+        }
+        video {
+            width: 640px;
+            height: 360px;
+            display: block;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-play {
+            background: #08CB00;
+            color: white;
+        }
+        .btn-play:hover {
+            background: #06a800;
+            transform: translateY(-2px);
+        }
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-stop:hover {
+            background: #dc2626;
+        }
+        .status {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .status.connected {
+            border-left: 4px solid #08CB00;
+        }
+        .status.error {
+            border-left: 4px solid #ef4444;
+        }
+        .stream-url {
+            background: rgba(0,0,0,0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            display: inline-block;
+        }
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        input[type="range"] {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Awaz Pulse Stream Player</h1>
+        <p class="subtitle">HLS Live Stream Test</p>
+        
+        <div class="player-container">
+            <video id="video" controls autoplay></video>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-play" onclick="playStream()">▶️ Play Stream</button>
+            <button class="btn-stop" onclick="stopStream()">⏹️ Stop</button>
+        </div>
+        
+        <div class="volume-control">
+            <span>🔊 Volume:</span>
+            <input type="range" id="volume" min="0" max="100" value="100" onchange="setVolume(this.value)">
+            <span id="volumeValue">100%</span>
+        </div>
+        
+        <div class="stream-url">
+            Stream URL: http://localhost:8088/hls/test_stream.m3u8
+        </div>
+        
+        <div id="status" class="status">
+            Status: Ready to play
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusEl = document.getElementById('status');
+        let hls = null;
+        
+        const streamUrl = 'http://localhost:8088/hls/test_stream.m3u8';
+        
+        function updateStatus(message, isError = false) {
+            statusEl.textContent = 'Status: ' + message;
+            statusEl.className = 'status ' + (isError ? 'error' : 'connected');
+        }
+        
+        function playStream() {
+            if (Hls.isSupported()) {
+                if (hls) {
+                    hls.destroy();
+                }
+                
+                hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                });
+                
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    updateStatus('Stream loaded - Playing...');
+                    video.play().catch(e => {
+                        updateStatus('Click the video to start playback (browser autoplay policy)', true);
+                    });
+                });
+                
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        updateStatus('Error: ' + data.type + ' - ' + data.details, true);
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            // Try to recover
+                            setTimeout(() => {
+                                updateStatus('Attempting to reconnect...');
+                                hls.startLoad();
+                            }, 3000);
+                        }
+                    }
+                });
+                
+                hls.on(Hls.Events.FRAG_LOADED, function() {
+                    updateStatus('🔴 LIVE - Streaming audio...');
+                });
+                
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari native HLS support
+                video.src = streamUrl;
+                video.addEventListener('loadedmetadata', function() {
+                    updateStatus('Stream loaded (Safari native HLS)');
+                    video.play();
+                });
+            } else {
+                updateStatus('HLS not supported in this browser', true);
+            }
+        }
+        
+        function stopStream() {
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            video.pause();
+            video.src = '';
+            updateStatus('Stream stopped');
+        }
+        
+        function setVolume(value) {
+            video.volume = value / 100;
+            document.getElementById('volumeValue').textContent = value + '%';
+        }
+        
+        // Auto-play on load
+        window.onload = function() {
+            // Small delay to ensure everything is ready
+            setTimeout(playStream, 500);
+        };
+        
+        // Handle video click for autoplay policy
+        video.addEventListener('click', function() {
+            if (video.paused) {
+                video.play().then(() => {
+                    updateStatus('🔴 LIVE - Streaming audio...');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

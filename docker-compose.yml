@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  # RTMP Streaming Server (Nginx-RTMP)
+  rtmp-server:
+    image: tiangolo/nginx-rtmp
+    container_name: awaz-pulse-rtmp
+    restart: unless-stopped
+    ports:
+      - "1935:1935"   # RTMP ingest port (OBS connects here)
+      - "8088:80"     # HLS playback port
+    volumes:
+      - ./nginx-rtmp.conf:/etc/nginx/nginx.conf:ro
+      - rtmp_data:/tmp/hls
+    networks:
+      - awaz-network
+
   # MySQL Database
   mysql:
     image: mysql:8.0
@@ -79,6 +93,8 @@ services:
 
 volumes:
   mysql_data:
+    driver: local
+  rtmp_data:
     driver: local
 
 networks:

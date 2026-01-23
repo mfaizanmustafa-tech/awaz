@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # RTMP Streaming Server (Nginx-RTMP)
+  # RTMP Streaming Server (Nginx-RTMP) - For HLS
   rtmp-server:
     image: tiangolo/nginx-rtmp
     container_name: awaz-pulse-rtmp
@@ -12,6 +12,25 @@ services:
     volumes:
       - ./nginx-rtmp.conf:/etc/nginx/nginx.conf:ro
       - rtmp_data:/tmp/hls
+    networks:
+      - awaz-network
+
+  # Icecast Server - For Direct Streaming (Low Latency)
+  icecast:
+    image: moul/icecast
+    container_name: awaz-pulse-icecast
+    restart: unless-stopped
+    ports:
+      - "8000:8000"   # Icecast web interface and streaming port
+    environment:
+      ICECAST_SOURCE_PASSWORD: awaz_source_2024
+      ICECAST_RELAY_PASSWORD: awaz_relay_2024
+      ICECAST_ADMIN_PASSWORD: awaz_admin_2024
+      ICECAST_HOSTNAME: localhost
+      ICECAST_MAX_CLIENTS: 1000
+      ICECAST_MAX_SOURCES: 50
+    volumes:
+      - icecast_data:/var/log/icecast2
     networks:
       - awaz-network
 
@@ -95,6 +114,8 @@ volumes:
   mysql_data:
     driver: local
   rtmp_data:
+    driver: local
+  icecast_data:
     driver: local
 
 networks:

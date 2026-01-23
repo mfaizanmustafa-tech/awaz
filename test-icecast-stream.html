@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Icecast Stream</title>
+</head>
+<body>
+    <h1>Icecast Stream Test</h1>
+    <audio id="player" controls autoplay>
+        <source src="http://localhost:8000/stream" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    
+    <div id="status"></div>
+    
+    <script>
+        const audio = document.getElementById('player');
+        const status = document.getElementById('status');
+        
+        audio.addEventListener('loadstart', () => {
+            status.innerHTML += '<p>Loading stream...</p>';
+        });
+        
+        audio.addEventListener('canplay', () => {
+            status.innerHTML += '<p>✅ Stream ready to play!</p>';
+        });
+        
+        audio.addEventListener('playing', () => {
+            status.innerHTML += '<p>✅ Stream is playing!</p>';
+        });
+        
+        audio.addEventListener('error', (e) => {
+            status.innerHTML += '<p>❌ Error: ' + audio.error.message + '</p>';
+            console.error('Audio error:', audio.error);
+        });
+        
+        audio.addEventListener('stalled', () => {
+            status.innerHTML += '<p>⚠️ Stream stalled</p>';
+        });
+    </script>
+</body>
+</html>

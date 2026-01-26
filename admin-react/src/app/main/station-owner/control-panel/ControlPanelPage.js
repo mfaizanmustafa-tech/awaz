@@ -74,6 +74,35 @@ function ControlPanelPage() {
 
       setChannels(channelsData);
       setShows(showsData);
+      
+      // Restore selected show from localStorage after shows are loaded
+      try {
+        const savedShow = localStorage.getItem('awaz_current_show');
+        console.log('📦 Checking for saved show in localStorage:', savedShow ? 'Found' : 'Not found');
+        
+        if (savedShow) {
+          const savedShowData = JSON.parse(savedShow);
+          console.log('📦 Saved show data:', savedShowData);
+          console.log('📦 Available shows:', showsData.map(s => ({ id: s.id, title: s.title })));
+          
+          // Find the matching show in the loaded shows by ID
+          const matchingShow = showsData.find(show => show.id === savedShowData.id);
+          
+          if (matchingShow) {
+            setSelectedShow(matchingShow);
+            console.log('✅ Restored selected show from loaded data:', matchingShow.title);
+          } else {
+            console.warn('⚠️ Saved show not found in loaded shows');
+            console.warn('⚠️ Looking for ID:', savedShowData.id);
+            console.warn('⚠️ Available IDs:', showsData.map(s => s.id));
+            localStorage.removeItem('awaz_current_show');
+          }
+        } else {
+          console.log('ℹ️ No saved show in localStorage');
+        }
+      } catch (error) {
+        console.error('❌ Error restoring selected show:', error);
+      }
 
       if (channelsData.length > 0) {
         setSelectedChannel(channelsData[0]);
@@ -146,9 +175,18 @@ function ControlPanelPage() {
       
       console.log('✅ Backend response:', response.data);
       
-      // Update local state
+      // Update local state and persist to localStorage
       setStreamState('live');
       localStorage.setItem('awaz_is_live', 'true');
+      localStorage.setItem('awaz_current_show', JSON.stringify(selectedShow));
+      localStorage.setItem('awaz_stream_type', streamType);
+      
+      console.log('💾 Saved to localStorage:', {
+        isLive: 'true',
+        show: selectedShow.title,
+        showId: selectedShow.id,
+        streamType: streamType
+      });
       
       alert(`Now LIVE! Users can listen at: ${streamUrl}`);
       
@@ -174,6 +212,7 @@ function ControlPanelPage() {
       
       setStreamState('off_air');
       localStorage.setItem('awaz_is_live', 'false');
+      localStorage.removeItem('awaz_current_show');
       
       console.log('⚫ Going OFF AIR');
     } catch (error) {
@@ -195,6 +234,7 @@ function ControlPanelPage() {
       setStreamType(type);
       setRtmpCredentials(null);
       setIcecastCredentials(null);
+      localStorage.setItem('awaz_stream_type', type);
       console.log(`✅ Switched to ${type} streaming`);
       
       // Auto-load credentials for the new type
@@ -309,11 +349,35 @@ function ControlPanelPage() {
   };
 
   useEffect(() => {
-    loadData();
+    // Restore state from localStorage (except selected show which is restored in loadData)
+    const restoreState = () => {
+      try {
+        // Restore stream state
+        const savedIsLive = localStorage.getItem('awaz_is_live');
+        if (savedIsLive === 'true') {
+          setStreamState('live');
+          console.log('🔄 Restored LIVE state from localStorage');
+        }
+        
+        // Restore stream type
+        const savedStreamType = localStorage.getItem('awaz_stream_type');
+        if (savedStreamType === 'hls' || savedStreamType === 'icecast') {
+          setStreamType(savedStreamType);
+          console.log('🔄 Restored stream type:', savedStreamType);
+        }
+      } catch (error) {
+        console.error('Error restoring state:', error);
+      }
+    };
+    
+    restoreState();
+    loadData(); // This will also restore the selected show after shows are loaded
+    
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString());
     }, 1000);
+    
     return () => clearInterval(timer);
   }, []);
 
@@ -512,7 +576,11 @@ function ControlPanelPage() {
                   )}
                 </div>
                 <button
-                  onClick={() => setSelectedShow(null)}
+                  onClick={() => {
+                    setSelectedShow(null);
+                    localStorage.removeItem('awaz_current_show');
+                    console.log('🗑️ Cleared selected show');
+                  }}
                   className="px-16 py-8 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   Change Show
@@ -541,7 +609,11 @@ function ControlPanelPage() {
                     key={show.id}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setSelectedShow(show)}
+                    onClick={() => {
+                      setSelectedShow(show);
+                      localStorage.setItem('awaz_current_show', JSON.stringify(show));
+                      console.log('💾 Selected and saved show:', show.title);
+                    }}
                     className={`p-20 rounded-12 cursor-pointer transition-all ${
                       selectedShow?.id === show.id
                         ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg'

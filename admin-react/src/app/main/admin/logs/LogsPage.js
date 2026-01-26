@@ -230,7 +230,18 @@ function LogsPage() {
                   <div className="flex flex-col gap-12">
                     {filteredLogs.map((log) => (
                       <div key={log.id}>
-                        <div className={`p-16 rounded-12 border-l-4 ${getLevelColor(log.level)} cursor-pointer hover:bg-gray-50 transition-colors`} onClick={() => toggleDetails(log.id)}>
+                        <div 
+                          className={`p-16 rounded-12 border-l-4 ${getLevelColor(log.level)} cursor-pointer hover:bg-gray-50 transition-colors`} 
+                          onClick={() => toggleDetails(log.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleDetails(log.id);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                        >
                           <div className="flex items-start gap-12">
                             <div className="flex items-center gap-8 min-w-100">
                               <FuseSvgIcon size={20}>{getLevelIcon(log.level)}</FuseSvgIcon>

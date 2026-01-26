@@ -69,9 +69,7 @@ function Layout2(props) {
             {props.children}
           </div>
 
-          {config.footer.display && (
-            <FooterLayout2 className={config.footer.style === 'fixed' && 'sticky bottom-0'} />
-          )}
+          {/* Footer removed */}
         </main>
       </div>
 

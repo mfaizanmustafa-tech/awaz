@@ -157,7 +157,7 @@ function SettingsPage() {
               </div>
               <div>
                 <Typography className="text-sm font-semibold mb-8 text-gray-700">Max Concurrent Streams</Typography>
-                <TextField fullWidth size="small" type="number" value={settings.maxStreams} onChange={(e) => handleChange('maxStreams', parseInt(e.target.value))} />
+                <TextField fullWidth size="small" type="number" value={settings.maxStreams} onChange={(e) => handleChange('maxStreams', parseInt(e.target.value, 10))} />
               </div>
               <FormControlLabel control={<Switch checked={settings.autoReconnect} onChange={(e) => handleChange('autoReconnect', e.target.checked)} />} label="Auto-reconnect" />
               <FormControlLabel control={<Switch checked={settings.enableRecording} onChange={(e) => handleChange('enableRecording', e.target.checked)} />} label="Enable Recording" />
@@ -178,11 +178,11 @@ function SettingsPage() {
               <FormControlLabel control={<Switch checked={settings.twoFactorAuth} onChange={(e) => handleChange('twoFactorAuth', e.target.checked)} />} label="Two-Factor Auth" />
               <div>
                 <Typography className="text-sm font-semibold mb-8 text-gray-700">Session Timeout (min)</Typography>
-                <TextField fullWidth size="small" type="number" value={settings.sessionTimeout} onChange={(e) => handleChange('sessionTimeout', parseInt(e.target.value))} />
+                <TextField fullWidth size="small" type="number" value={settings.sessionTimeout} onChange={(e) => handleChange('sessionTimeout', parseInt(e.target.value, 10))} />
               </div>
               <div>
                 <Typography className="text-sm font-semibold mb-8 text-gray-700">Max Login Attempts</Typography>
-                <TextField fullWidth size="small" type="number" value={settings.maxLoginAttempts} onChange={(e) => handleChange('maxLoginAttempts', parseInt(e.target.value))} />
+                <TextField fullWidth size="small" type="number" value={settings.maxLoginAttempts} onChange={(e) => handleChange('maxLoginAttempts', parseInt(e.target.value, 10))} />
               </div>
               <FormControlLabel control={<Switch checked={settings.forceHttps} onChange={(e) => handleChange('forceHttps', e.target.checked)} />} label="Force HTTPS" />
             </div>
@@ -205,7 +205,7 @@ function SettingsPage() {
               </div>
               <div>
                 <Typography className="text-sm font-semibold mb-8 text-gray-700">SMTP Port</Typography>
-                <TextField fullWidth size="small" type="number" value={settings.smtpPort} onChange={(e) => handleChange('smtpPort', parseInt(e.target.value))} />
+                <TextField fullWidth size="small" type="number" value={settings.smtpPort} onChange={(e) => handleChange('smtpPort', parseInt(e.target.value, 10))} />
               </div>
               <div>
                 <Typography className="text-sm font-semibold mb-8 text-gray-700">SMTP Username</Typography>
@@ -243,7 +243,7 @@ function SettingsPage() {
               </div>
               <div>
                 <Typography className="text-sm font-semibold mb-8 text-gray-700">Max Upload Size (MB)</Typography>
-                <TextField fullWidth size="small" type="number" value={settings.maxUploadSize} onChange={(e) => handleChange('maxUploadSize', parseInt(e.target.value))} />
+                <TextField fullWidth size="small" type="number" value={settings.maxUploadSize} onChange={(e) => handleChange('maxUploadSize', parseInt(e.target.value, 10))} />
               </div>
               <div>
                 <Typography className="text-sm font-semibold mb-8 text-gray-700">Allowed File Types</Typography>

@@ -77,13 +77,20 @@ class JwtService extends FuseUtils.EventEmitter {
           
           if (response.data.user) {
             // Backend returns 'token' not 'access_token'
-            const token = response.data.token || response.data.access_token;
+            const { token: responseToken, access_token: accessToken, user } = response.data;
+            const token = responseToken || accessToken;
+            
+            // Convert role string to array format expected by Fuse
+            if (user.role && typeof user.role === 'string') {
+              user.role = [user.role];
+            }
+            
             console.log('JwtService - Token:', token);
-            console.log('JwtService - User:', response.data.user);
+            console.log('JwtService - User:', user);
             
             this.setSession(token);
-            resolve(response.data.user);
-            this.emit('onLogin', response.data.user);
+            resolve(user);
+            this.emit('onLogin', user);
           } else {
             console.error('JwtService - No user in response');
             reject(response.data.error || 'No user data received');
@@ -117,6 +124,14 @@ class JwtService extends FuseUtils.EventEmitter {
         .then((response) => {
           if (response.data) {
             const user = response.data;
+            
+            // Convert role string to array format expected by Fuse
+            if (user.role && typeof user.role === 'string') {
+              user.role = [user.role];
+            }
+            
+            console.log('JwtService - signInWithToken - User:', user);
+            
             // Keep the existing token
             resolve(user);
           } else {
@@ -125,6 +140,7 @@ class JwtService extends FuseUtils.EventEmitter {
           }
         })
         .catch((error) => {
+          console.error('JwtService - signInWithToken error:', error);
           this.logout();
           reject(new Error('Failed to login with token.'));
         });

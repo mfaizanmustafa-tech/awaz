@@ -2,25 +2,16 @@ import FuseUtils from '@fuse/utils';
 import FuseLoading from '@fuse/core/FuseLoading';
 import { Navigate } from 'react-router-dom';
 import settingsConfig from 'app/configs/settingsConfig';
-import userInterfaceConfigs from '../main/user-interface/UserInterfaceConfigs';
 import SignInConfig from '../main/sign-in/SignInConfig';
 import SignUpConfig from '../main/sign-up/SignUpConfig';
 import SignOutConfig from '../main/sign-out/SignOutConfig';
-import dashboardsConfigs from '../main/dashboards/dashboardsConfigs';
-import appsConfigs from '../main/apps/appsConfigs';
-import pagesConfigs from '../main/pages/pagesConfigs';
-import authRoleExamplesConfigs from '../main/auth/authRoleExamplesConfigs';
-import DocumentationConfig from '../main/documentation/DocumentationConfig';
 import AdminConfig from '../main/admin/AdminConfig';
+import StationOwnerConfig from '../main/station-owner/StationOwnerConfig';
+import RoleBasedRedirect from '../main/RoleBasedRedirect';
 
 const routeConfigs = [
   AdminConfig,
-  ...appsConfigs,
-  ...dashboardsConfigs,
-  ...pagesConfigs,
-  ...authRoleExamplesConfigs,
-  ...userInterfaceConfigs,
-  DocumentationConfig,
+  StationOwnerConfig,
   SignOutConfig,
   SignInConfig,
   SignUpConfig,
@@ -30,7 +21,7 @@ const routes = [
   ...FuseUtils.generateRoutesFromConfigs(routeConfigs, settingsConfig.defaultAuth),
   {
     path: '/',
-    element: <Navigate to="dashboards/analytics" />,
+    element: <RoleBasedRedirect />,
     auth: settingsConfig.defaultAuth,
   },
   {
@@ -39,7 +30,7 @@ const routes = [
   },
   {
     path: '*',
-    element: <Navigate to="pages/error/404" />,
+    element: <RoleBasedRedirect />,
   },
 ];
 

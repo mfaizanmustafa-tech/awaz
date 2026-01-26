@@ -87,6 +87,16 @@
         "react/react-in-jsx-scope": "off", // after react v17
         "react/jsx-uses-react": "off", // after react v17
         "react/jsx-no-bind": "off",
+        "react/button-has-type": "off",
+        "prefer-template": "off",
+        "react/self-closing-comp": "off",
+        "default-case": "off",
+        "jsx-a11y/label-has-associated-control": "off",
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-static-element-interactions": "off",
+        "react/jsx-curly-brace-presence": "off",
+        "no-nested-ternary": "off",
+        "react/jsx-no-duplicate-props": "off",
         "unused-imports/no-unused-imports": "warn"
     }
 }

@@ -53,6 +53,8 @@ function EngagementPage() {
       const token = localStorage.getItem('jwt_access_token');
       const headers = { Authorization: `Bearer ${token}` };
 
+      console.log('📊 Loading engagement data for channel:', channelId);
+
       const [statsRes, recentRes, commentsRes, ratingsRes, likesRes] = await Promise.all([
         axios.get(`${API_URL}/interactions/stats/${channelId}`, { headers }),
         axios.get(`${API_URL}/interactions/recent/${channelId}?limit=50`, { headers }),
@@ -61,13 +63,19 @@ function EngagementPage() {
         axios.get(`${API_URL}/interactions/like/${channelId}/list`, { headers })
       ]);
 
+      console.log('✅ Stats:', statsRes.data);
+      console.log('✅ Recent:', recentRes.data);
+      console.log('✅ Comments:', commentsRes.data);
+      console.log('✅ Ratings:', ratingsRes.data);
+      console.log('✅ Likes:', likesRes.data);
+
       setStats(statsRes.data);
       setRecentInteractions(recentRes.data);
       setComments(commentsRes.data);
       setRatings(ratingsRes.data);
       setLikes(likesRes.data);
     } catch (error) {
-      console.error('Error loading engagement data:', error);
+      console.error('❌ Error loading engagement data:', error.response?.data || error.message);
     } finally {
       setLoading(false);
     }

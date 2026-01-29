@@ -45,6 +45,7 @@ function ControlPanelPage() {
   const [currentListeners, setCurrentListeners] = useState(0);
   const [peakListeners, setPeakListeners] = useState(0);
   const [uptime, setUptime] = useState('0h 0m');
+  const [totalListeningTime, setTotalListeningTime] = useState('0h 0m');
   const [currentTime, setCurrentTime] = useState('');
   const [shows, setShows] = useState([]);
   const [selectedShow, setSelectedShow] = useState(null);
@@ -136,12 +137,32 @@ function ControlPanelPage() {
             fullRtmpUrl: `${rtmpUrl}/${channelsData[0].streamKey}`
           });
         }
+
+        // Load listening time data
+        loadListeningTime(channelsData[0].id);
       }
     } catch (error) {
       console.error('Error loading data:', error);
       setShows(mockShows);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadListeningTime = async (channelId) => {
+    try {
+      const token = localStorage.getItem('jwt_access_token');
+      const response = await axios.get(
+        `${API_URL}/analytics/channels/${channelId}/listening-time?period=today`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data && response.data.totalListeningTime) {
+        setTotalListeningTime(response.data.totalListeningTime.formatted);
+        console.log('📊 Total listening time:', response.data.totalListeningTime.formatted);
+      }
+    } catch (error) {
+      console.error('Error loading listening time:', error);
     }
   };
 
@@ -520,9 +541,10 @@ function ControlPanelPage() {
     
     // Listen for listener count updates
     const handleListenerUpdate = (data) => {
+      console.log('👥 Received listener update:', data);
       if (data.channelId === selectedChannel?.id) {
         setCurrentListeners(data.count);
-        console.log('👥 Listener count updated:', data.count);
+        console.log('👥 Listener count updated for current channel:', data.count);
       }
     };
     websocketService.on('stream:listeners', handleListenerUpdate);
@@ -538,7 +560,7 @@ function ControlPanelPage() {
       websocketService.off('stream:listeners', handleListenerUpdate);
       // Don't disconnect WebSocket here as it might be used by other components
     };
-  }, []);
+  }, [selectedChannel?.id]); // Add selectedChannel.id as dependency
 
   if (loading) {
     return (
@@ -678,7 +700,7 @@ function ControlPanelPage() {
         {[
           { label: 'Live Listeners', value: formatNumber(currentListeners), icon: 'heroicons-outline:users', color: 'purple' },
           { label: 'Peak Today', value: formatNumber(peakListeners), icon: 'heroicons-outline:chart-bar', color: 'pink' },
-          { label: 'Total Uptime', value: uptime, icon: 'heroicons-outline:clock', color: 'blue' },
+          { label: 'Listening Time Today', value: totalListeningTime, icon: 'heroicons-outline:clock', color: 'blue' },
           { label: 'Stream Status', value: streamState === 'live' ? 'LIVE' : 'OFF AIR', icon: 'heroicons-outline:signal', color: streamState === 'live' ? 'green' : 'gray' }
         ].map((stat, index) => (
           <motion.div

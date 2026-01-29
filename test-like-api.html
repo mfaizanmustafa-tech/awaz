@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Like API</title>
+</head>
+<body>
+    <h1>Test Like API</h1>
+    
+    <div>
+        <h2>1. Login First</h2>
+        <input type="email" id="email" placeholder="Email" value="user@example.com">
+        <input type="password" id="password" placeholder="Password" value="password123">
+        <button onclick="login()">Login</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div>
+        <h2>2. Get Channels</h2>
+        <button onclick="getChannels()">Get Channels</button>
+        <div id="channelsResult"></div>
+    </div>
+
+    <div>
+        <h2>3. Toggle Like</h2>
+        <input type="text" id="channelId" placeholder="Channel ID">
+        <button onclick="toggleLike()">Toggle Like</button>
+        <div id="likeResult"></div>
+    </div>
+
+    <div>
+        <h2>4. Get Likes Count</h2>
+        <button onclick="getLikesCount()">Get Likes Count</button>
+        <div id="likesCountResult"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let token = '';
+        let channelId = '';
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                console.log('Login response:', data);
+
+                if (data.access_token) {
+                    token = data.access_token;
+                    document.getElementById('loginResult').innerHTML = 
+                        `<p style="color: green;">✅ Logged in successfully!</p>
+                         <p>Token: ${token.substring(0, 20)}...</p>`;
+                } else {
+                    document.getElementById('loginResult').innerHTML = 
+                        `<p style="color: red;">❌ Login failed: ${JSON.stringify(data)}</p>`;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('loginResult').innerHTML = 
+                    `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function getChannels() {
+            try {
+                const response = await fetch(`${API_URL}/channels`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const channels = await response.json();
+                console.log('Channels:', channels);
+
+                if (channels.length > 0) {
+                    channelId = channels[0].id;
+                    document.getElementById('channelId').value = channelId;
+                    
+                    let html = '<p style="color: green;">✅ Channels loaded!</p><ul>';
+                    channels.forEach(ch => {
+                        html += `<li>${ch.name} (${ch.id})</li>`;
+                    });
+                    html += '</ul>';
+                    document.getElementById('channelsResult').innerHTML = html;
+                } else {
+                    document.getElementById('channelsResult').innerHTML = 
+                        '<p style="color: orange;">⚠️ No channels found</p>';
+                }
+            } catch (error) {
+                console.error('Get channels error:', error);
+                document.getElementById('channelsResult').innerHTML = 
+                    `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function toggleLike() {
+            const chId = document.getElementById('channelId').value;
+            
+            if (!token) {
+                alert('Please login first!');
+                return;
+            }
+
+            if (!chId) {
+                alert('Please enter a channel ID!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/interactions/like/${chId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                console.log('Like response:', data);
+
+                document.getElementById('likeResult').innerHTML = 
+                    `<p style="color: green;">✅ ${data.message}</p>
+                     <p>Liked: ${data.liked}</p>`;
+            } catch (error) {
+                console.error('Toggle like error:', error);
+                document.getElementById('likeResult').innerHTML = 
+                    `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function getLikesCount() {
+            const chId = document.getElementById('channelId').value;
+            
+            if (!chId) {
+                alert('Please enter a channel ID!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/interactions/like/${chId}/count`);
+                const data = await response.json();
+                console.log('Likes count:', data);
+
+                document.getElementById('likesCountResult').innerHTML = 
+                    `<p style="color: green;">✅ Total likes: ${data.count}</p>`;
+            } catch (error) {
+                console.error('Get likes count error:', error);
+                document.getElementById('likesCountResult').innerHTML = 
+                    `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

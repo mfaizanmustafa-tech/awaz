@@ -8,6 +8,7 @@ const ShowsPage = lazy(() => import('./shows/ShowsPage'));
 const PerformersPage = lazy(() => import('./performers/PerformersPage'));
 const GuestsPage = lazy(() => import('./guests/GuestsPage'));
 const AnalyticsPage = lazy(() => import('./analytics/AnalyticsPage'));
+const EngagementPage = lazy(() => import('./engagement/EngagementPage'));
 
 const StationOwnerConfig = {
   settings: {
@@ -44,6 +45,10 @@ const StationOwnerConfig = {
     {
       path: 'station-owner/analytics',
       element: <AnalyticsPage />,
+    },
+    {
+      path: 'station-owner/engagement',
+      element: <EngagementPage />,
     },
   ],
 };

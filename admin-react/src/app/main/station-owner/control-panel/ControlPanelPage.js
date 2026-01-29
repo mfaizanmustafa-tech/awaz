@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
+import websocketService from '../../../services/websocket.service';
+import LiveChatWidget from '../components/LiveChatWidget';
 
 const API_URL = 'http://localhost:3000';
 
@@ -54,6 +56,7 @@ function ControlPanelPage() {
   const [loadingCredentials, setLoadingCredentials] = useState(false);
   const [switchingStreamType, setSwitchingStreamType] = useState(false);
   const [isGoingLive, setIsGoingLive] = useState(false);
+  const [currentStreamId, setCurrentStreamId] = useState(null);
 
   const loadData = async () => {
     try {
@@ -61,16 +64,33 @@ function ControlPanelPage() {
       const token = localStorage.getItem('jwt_access_token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      const [channelsRes, showsRes] = await Promise.all([
-        axios.get('http://localhost:3000/channels/my-channels', config).catch(() => ({ data: [] })),
-        axios.get('http://localhost:3000/shows', config).catch(() => ({ data: mockShows }))
-      ]);
-
+      // First load channels
+      const channelsRes = await axios.get('http://localhost:3000/channels/my-channels', config).catch(() => ({ data: [] }));
       const channelsData = channelsRes.data || [];
-      const showsData = showsRes.data || mockShows;
 
       console.log('Loaded channels:', channelsData.length);
+
+      // Then load shows for each channel
+      let allShows = [];
+      if (channelsData.length > 0) {
+        const showsPromises = channelsData.map(channel => 
+          axios.get(`http://localhost:3000/shows/channel/${channel.id}`, config)
+            .then(res => res.data)
+            .catch(() => [])
+        );
+        const showsArrays = await Promise.all(showsPromises);
+        allShows = showsArrays.flat(); // Flatten array of arrays
+      }
+
+      const showsData = allShows.length > 0 ? allShows : mockShows;
+
       console.log('Loaded shows:', showsData.length);
+      console.log('📊 Shows data with performers:', showsData.map(s => ({
+        id: s.id,
+        title: s.title,
+        performers: s.performers,
+        hasPerformers: !!s.performers && s.performers.length > 0
+      })));
 
       setChannels(channelsData);
       setShows(showsData);
@@ -153,12 +173,31 @@ function ControlPanelPage() {
         console.log('📺 Using HLS stream URL:', streamUrl);
       }
       
+      // Extract host information from show
+      const hostInfo = getHostName(selectedShow);
+      
+      console.log('🎭 Show data:', {
+        show: selectedShow,
+        performers: selectedShow.performers,
+        extractedHost: hostInfo
+      });
+      
+      const metadata = {
+        showTitle: selectedShow.title,
+        showType: selectedShow.type,
+        hostStageName: hostInfo,
+        streamSource: streamType,
+        streamUrl,
+        isLive: true,
+      };
+      
       console.log('🔴 Going LIVE with:', {
         channelId: selectedChannel.id,
         channelName: selectedChannel.name,
         show: selectedShow.title,
         streamType,
-        streamUrl
+        streamUrl,
+        metadata
       });
       
       // Update the stream status in the backend
@@ -168,24 +207,57 @@ function ControlPanelPage() {
           showId: selectedShow.id,
           streamType,
           streamUrl,
-          showTitle: selectedShow.title
+          showTitle: selectedShow.title,
+          showType: selectedShow.type,
+          hostStageName: hostInfo,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
       console.log('✅ Backend response:', response.data);
       
+      // Store the stream ID for later use
+      setCurrentStreamId(response.data.streamId);
+      
+      // Connect to WebSocket if not already connected
+      if (!websocketService.isConnected()) {
+        console.log('🔌 Connecting to WebSocket...');
+        websocketService.connect();
+        // Wait a bit for connection to establish
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Broadcast metadata via WebSocket to all listeners
+      if (websocketService.isConnected()) {
+        console.log('📡 Broadcasting metadata via WebSocket');
+        
+        // Start the stream via WebSocket
+        websocketService.startStream(
+          selectedChannel.id,
+          response.data.streamId,
+          metadata
+        );
+        
+        // Also send metadata update
+        websocketService.updateMetadata(selectedChannel.id, metadata);
+        
+        console.log('✅ WebSocket broadcast sent');
+      } else {
+        console.warn('⚠️ WebSocket not connected, metadata not broadcast');
+      }
+      
       // Update local state and persist to localStorage
       setStreamState('live');
       localStorage.setItem('awaz_is_live', 'true');
       localStorage.setItem('awaz_current_show', JSON.stringify(selectedShow));
       localStorage.setItem('awaz_stream_type', streamType);
+      localStorage.setItem('awaz_stream_id', response.data.streamId);
       
       console.log('💾 Saved to localStorage:', {
         isLive: 'true',
         show: selectedShow.title,
         showId: selectedShow.id,
-        streamType: streamType
+        streamType
       });
       
       alert(`Now LIVE! Users can listen at: ${streamUrl}`);
@@ -198,17 +270,80 @@ function ControlPanelPage() {
     }
   };
 
+  // NEW: Function to change show during live streaming
+  const handleChangeShowLive = async (newShow) => {
+    if (!selectedChannel || streamState !== 'live') {
+      // If not live, just select the show normally
+      setSelectedShow(newShow);
+      localStorage.setItem('awaz_current_show', JSON.stringify(newShow));
+      return;
+    }
+
+    console.log('🔄 Changing show during LIVE stream:', {
+      from: selectedShow?.title,
+      to: newShow.title
+    });
+
+    try {
+      // Update selected show immediately (optimistic update)
+      setSelectedShow(newShow);
+      localStorage.setItem('awaz_current_show', JSON.stringify(newShow));
+
+      const metadata = {
+        showTitle: newShow.title,
+        showType: newShow.type,
+        hostStageName: getHostName(newShow),
+        streamSource: streamType,
+        isLive: true,
+      };
+
+      // Broadcast metadata update via WebSocket INSTANTLY
+      if (websocketService.isConnected()) {
+        console.log('📡 Broadcasting show change via WebSocket');
+        websocketService.updateMetadata(selectedChannel.id, metadata);
+        console.log('✅ Show change broadcast sent');
+      }
+
+      // Also update backend (non-blocking)
+      const token = localStorage.getItem('jwt_access_token');
+      axios.post(
+        `${API_URL}/channels/${selectedChannel.id}/update-show`,
+        { 
+          showId: newShow.id,
+          showTitle: newShow.title,
+          showType: newShow.type,
+          hostStageName: getHostName(newShow),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      ).then(() => {
+        console.log('✅ Backend updated with new show');
+      }).catch(err => {
+        console.error('⚠️ Failed to update backend:', err);
+      });
+
+      alert(`Show changed to: ${newShow.title}`);
+    } catch (error) {
+      console.error('❌ Error changing show:', error);
+    }
+  };
+
   const handleOffAir = async () => {
     if (!window.confirm('Are you sure you want to go off air?')) return;
 
     try {
       const token = localStorage.getItem('jwt_access_token');
       
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/channels/${selectedChannel.id}/stop-stream`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      // Broadcast stop via WebSocket
+      if (websocketService.isConnected() && response.data.streamId) {
+        console.log('📡 Broadcasting stream stop via WebSocket');
+        websocketService.stopStream(selectedChannel.id, response.data.streamId);
+      }
       
       setStreamState('off_air');
       localStorage.setItem('awaz_is_live', 'false');
@@ -373,12 +508,36 @@ function ControlPanelPage() {
     restoreState();
     loadData(); // This will also restore the selected show after shows are loaded
     
+    // Initialize WebSocket connection
+    console.log('🔌 Initializing WebSocket connection for admin panel');
+    websocketService.connect();
+    
+    // Listen for connection status
+    const handleConnection = (data) => {
+      console.log('WebSocket connection status:', data.connected);
+    };
+    websocketService.on('connection', handleConnection);
+    
+    // Listen for listener count updates
+    const handleListenerUpdate = (data) => {
+      if (data.channelId === selectedChannel?.id) {
+        setCurrentListeners(data.count);
+        console.log('👥 Listener count updated:', data.count);
+      }
+    };
+    websocketService.on('stream:listeners', handleListenerUpdate);
+    
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString());
     }, 1000);
     
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      websocketService.off('connection', handleConnection);
+      websocketService.off('stream:listeners', handleListenerUpdate);
+      // Don't disconnect WebSocket here as it might be used by other components
+    };
   }, []);
 
   if (loading) {
@@ -553,7 +712,7 @@ function ControlPanelPage() {
               className="p-24 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-16 shadow-lg"
             >
               <div className="flex items-center justify-between mb-16">
-                <span className={`px-12 py-6 rounded-full text-xs font-bold ${streamState === 'live' ? 'bg-red-500' : 'bg-white text-purple-600'}`}>
+                <span className={`px-12 py-6 rounded-full text-xs font-bold ${streamState === 'live' ? 'bg-red-500 animate-pulse' : 'bg-white text-purple-600'}`}>
                   {streamState === 'live' ? '🔴 NOW STREAMING' : '✓ READY TO STREAM'}
                 </span>
                 <span className="text-sm">{currentTime}</span>
@@ -586,6 +745,12 @@ function ControlPanelPage() {
                   Change Show
                 </button>
               </div>
+              {streamState === 'live' && (
+                <div className="mt-16 p-12 bg-white bg-opacity-20 rounded-lg text-sm">
+                  <FuseSvgIcon size={16} className="inline mr-8">heroicons-outline:information-circle</FuseSvgIcon>
+                  Click any show below to switch LIVE - listeners will see the change instantly!
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -609,11 +774,7 @@ function ControlPanelPage() {
                     key={show.id}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      setSelectedShow(show);
-                      localStorage.setItem('awaz_current_show', JSON.stringify(show));
-                      console.log('💾 Selected and saved show:', show.title);
-                    }}
+                    onClick={() => handleChangeShowLive(show)}
                     className={`p-20 rounded-12 cursor-pointer transition-all ${
                       selectedShow?.id === show.id
                         ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg'
@@ -641,6 +802,11 @@ function ControlPanelPage() {
                         <FuseSvgIcon size={12}>heroicons-outline:microphone</FuseSvgIcon>
                         {getHostName(show)}
                       </p>
+                    )}
+                    {streamState === 'live' && selectedShow?.id !== show.id && (
+                      <div className="mt-8 text-xs bg-white bg-opacity-20 px-8 py-4 rounded">
+                        Click to switch show LIVE
+                      </div>
                     )}
                   </motion.div>
                 ))}
@@ -913,6 +1079,9 @@ function ControlPanelPage() {
           )}
         </div>
       </div>
+
+      {/* Live Chat Widget - Floating */}
+      {selectedChannel && <LiveChatWidget channelId={selectedChannel.id} compact />}
     </div>
   );
 }

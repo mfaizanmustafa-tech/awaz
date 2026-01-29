@@ -71,7 +71,7 @@ function PerformersPage() {
       }
 
       console.log('Loading performers from API...');
-      const { data } = await axios.get(`${API_URL}/persons`, {
+      const { data } = await axios.get(`${API_URL}/persons/my-persons`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000
       });

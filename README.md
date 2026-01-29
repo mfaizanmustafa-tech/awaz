@@ -2,6 +2,16 @@
 
 Awaz Pulse is a comprehensive digital ecosystem for Pakistan's FM radio industry, featuring role-based authentication, real-time analytics, and the APMP (Awaz Pulse Metadata Protocol) for enhanced radio streaming.
 
+## 📚 Documentation
+
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup and quick start guide
+- **[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)** - Database structure and relationships
+- **[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)** - System architecture overview
+- **[ICECAST_SETUP_GUIDE.md](ICECAST_SETUP_GUIDE.md)** - Streaming server setup
+- **[MYSQL_SETUP_GUIDE.md](MYSQL_SETUP_GUIDE.md)** - Database configuration
+- **[SYSTEM_REQUIREMENTS.md](SYSTEM_REQUIREMENTS.md)** - System requirements
+- **[QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)** - Quick start instructions
+
 ## Project Structure
 
 ```

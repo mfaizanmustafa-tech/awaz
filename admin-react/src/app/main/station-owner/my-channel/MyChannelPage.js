@@ -43,6 +43,8 @@ function MyChannelPage() {
     language: 'urdu'
   });
 
+  console.log('Dialog open state:', openCreateDialog);
+
   useEffect(() => {
     loadAllData();
   }, []);
@@ -109,7 +111,7 @@ function MyChannelPage() {
       const token = localStorage.getItem('jwt_access_token');
       if (!token) return;
 
-      const { data } = await axios.get(`${API_URL}/persons`, {
+      const { data } = await axios.get(`${API_URL}/persons/my-persons`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000
       });
@@ -127,7 +129,7 @@ function MyChannelPage() {
       const token = localStorage.getItem('jwt_access_token');
       if (!token) return;
 
-      const { data} = await axios.get(`${API_URL}/guests`, {
+      const { data} = await axios.get(`${API_URL}/guests/my-guests`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000
       });
@@ -154,7 +156,9 @@ function MyChannelPage() {
   };
 
   const handleCreateChannel = () => {
+    console.log('Create Channel button clicked');
     setOpenCreateDialog(true);
+    console.log('Dialog state set to true');
   };
 
   const handleCloseDialog = () => {
@@ -287,41 +291,157 @@ function MyChannelPage() {
   // No Channel State
   if (channels.length === 0) {
     return (
-      <div className="flex flex-col flex-auto min-w-0 items-center justify-center p-24 sm:p-32">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-640">
-          <Paper className="p-48 rounded-24 shadow-lg text-center">
-            <div className="flex items-center justify-center w-128 h-128 rounded-full bg-gradient-to-r from-cyan-800 to-cyan-900 mx-auto mb-24">
-              <FuseSvgIcon size={64} className="text-white">heroicons-outline:signal</FuseSvgIcon>
+      <>
+        <div className="flex flex-col flex-auto min-w-0 items-center justify-center p-24 sm:p-32">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-640">
+            <Paper className="p-48 rounded-24 shadow-lg text-center">
+              <div className="flex items-center justify-center w-128 h-128 rounded-full bg-gradient-to-r from-cyan-800 to-cyan-900 mx-auto mb-24">
+                <FuseSvgIcon size={64} className="text-white">heroicons-outline:signal</FuseSvgIcon>
+              </div>
+              <Typography className="text-32 font-bold mb-16">Create Your Radio Channel</Typography>
+              <Typography className="text-16 text-gray-600 mb-32">
+                Start your broadcasting journey by creating your own radio channel. Reach thousands of listeners and share your content with the world.
+              </Typography>
+              <div className="grid grid-cols-2 gap-16 mb-32">
+                {[
+                  { icon: 'heroicons-outline:microphone', label: 'Live Broadcasting' },
+                  { icon: 'heroicons-outline:users', label: 'Unlimited Listeners' },
+                  { icon: 'heroicons-outline:chart-bar', label: 'Real-time Analytics' },
+                  { icon: 'heroicons-outline:calendar', label: 'Show Scheduling' },
+                ].map((feature, idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-8 p-16 bg-gray-50 rounded-12">
+                    <FuseSvgIcon size={32} color="primary">{feature.icon}</FuseSvgIcon>
+                    <Typography className="text-sm font-semibold">{feature.label}</Typography>
+                  </div>
+                ))}
+              </div>
+              <Button 
+                variant="contained" 
+                size="large"
+                color="primary"
+                startIcon={<FuseSvgIcon>heroicons-outline:plus</FuseSvgIcon>}
+                className="w-full"
+                onClick={handleCreateChannel}
+              >
+                Create Your Channel
+              </Button>
+            </Paper>
+          </motion.div>
+        </div>
+
+        {/* Create Channel Dialog */}
+        <Dialog 
+          open={openCreateDialog}
+          onClose={handleCloseDialog} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            className: "rounded-16",
+            style: { zIndex: 9999 }
+          }}
+          style={{ zIndex: 9999 }}
+        >
+          <DialogTitle className="text-xl font-bold">
+            <div className="flex items-center gap-8">
+              <FuseSvgIcon color="info">heroicons-outline:plus-circle</FuseSvgIcon>
+              Create New Channel
             </div>
-            <Typography className="text-32 font-bold mb-16">Create Your Radio Channel</Typography>
-            <Typography className="text-16 text-gray-600 mb-32">
-              Start your broadcasting journey by creating your own radio channel. Reach thousands of listeners and share your content with the world.
-            </Typography>
-            <div className="grid grid-cols-2 gap-16 mb-32">
-              {[
-                { icon: 'heroicons-outline:microphone', label: 'Live Broadcasting' },
-                { icon: 'heroicons-outline:users', label: 'Unlimited Listeners' },
-                { icon: 'heroicons-outline:chart-bar', label: 'Real-time Analytics' },
-                { icon: 'heroicons-outline:calendar', label: 'Show Scheduling' },
-              ].map((feature, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-8 p-16 bg-gray-50 rounded-12">
-                  <FuseSvgIcon size={32} color="primary">{feature.icon}</FuseSvgIcon>
-                  <Typography className="text-sm font-semibold">{feature.label}</Typography>
-                </div>
-              ))}
+          </DialogTitle>
+          <DialogContent>
+            <div className="flex flex-col gap-16 mt-16">
+              <TextField
+                label="Channel Name"
+                value={channelFormData.name}
+                onChange={(e) => setChannelFormData({ ...channelFormData, name: e.target.value })}
+                fullWidth
+                required
+                helperText="e.g., FM Islamabad, Radio Pakistan"
+              />
+              <div className="grid grid-cols-2 gap-16">
+                <TextField
+                  label="Call Sign"
+                  value={channelFormData.callSign}
+                  onChange={(e) => setChannelFormData({ ...channelFormData, callSign: e.target.value })}
+                  fullWidth
+                  required
+                  helperText="e.g., URDU-FM, PK-101"
+                />
+                <TextField
+                  label="Frequency"
+                  value={channelFormData.frequency}
+                  onChange={(e) => setChannelFormData({ ...channelFormData, frequency: e.target.value })}
+                  fullWidth
+                  helperText="e.g., 92.4 MHz"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-16">
+                <TextField
+                  label="City"
+                  value={channelFormData.city}
+                  onChange={(e) => setChannelFormData({ ...channelFormData, city: e.target.value })}
+                  fullWidth
+                  helperText="e.g., Islamabad, Karachi"
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={channelFormData.category}
+                    onChange={(e) => setChannelFormData({ ...channelFormData, category: e.target.value })}
+                    label="Category"
+                  >
+                    <MenuItem value="music">Music</MenuItem>
+                    <MenuItem value="talk">Talk</MenuItem>
+                    <MenuItem value="news">News</MenuItem>
+                    <MenuItem value="religious">Religious</MenuItem>
+                    <MenuItem value="sports">Sports</MenuItem>
+                    <MenuItem value="mixed">Mixed</MenuItem>
+                    <MenuItem value="educational">Educational</MenuItem>
+                    <MenuItem value="entertainment">Entertainment</MenuItem>
+                  </Select>
+                </FormControl>
+              </div>
+              <FormControl fullWidth>
+                <InputLabel>Language</InputLabel>
+                <Select
+                  value={channelFormData.language}
+                  onChange={(e) => setChannelFormData({ ...channelFormData, language: e.target.value })}
+                  label="Language"
+                >
+                  <MenuItem value="urdu">Urdu</MenuItem>
+                  <MenuItem value="english">English</MenuItem>
+                  <MenuItem value="punjabi">Punjabi</MenuItem>
+                  <MenuItem value="sindhi">Sindhi</MenuItem>
+                  <MenuItem value="pashto">Pashto</MenuItem>
+                  <MenuItem value="balochi">Balochi</MenuItem>
+                  <MenuItem value="mixed">Mixed</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Description"
+                value={channelFormData.description}
+                onChange={(e) => setChannelFormData({ ...channelFormData, description: e.target.value })}
+                fullWidth
+                multiline
+                rows={3}
+                helperText="Brief description of your channel"
+              />
             </div>
+          </DialogContent>
+          <DialogActions className="p-16">
+            <Button onClick={handleCloseDialog} className="text-gray-600">
+              Cancel
+            </Button>
             <Button 
               variant="contained" 
-              size="large"
-              color="primary"
-              startIcon={<FuseSvgIcon>heroicons-outline:plus</FuseSvgIcon>}
-              className="w-full"
+              color="info" 
+              onClick={handleSubmitChannel}
+              startIcon={<FuseSvgIcon className="text-white">heroicons-outline:check</FuseSvgIcon>}
             >
-              Create Your Channel
+              Create Channel
             </Button>
-          </Paper>
-        </motion.div>
-      </div>
+          </DialogActions>
+        </Dialog>
+      </>
     );
   }
 
@@ -749,13 +869,15 @@ function MyChannelPage() {
 
       {/* Create Channel Dialog */}
       <Dialog 
-        open={openCreateDialog} 
+        open={openCreateDialog}
         onClose={handleCloseDialog} 
         maxWidth="md" 
         fullWidth
         PaperProps={{
-          className: "rounded-16"
+          className: "rounded-16",
+          style: { zIndex: 9999 }
         }}
+        style={{ zIndex: 9999 }}
       >
         <DialogTitle className="text-xl font-bold">
           <div className="flex items-center gap-8">

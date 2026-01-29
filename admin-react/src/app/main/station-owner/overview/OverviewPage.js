@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
+import LiveChatWidget from '../components/LiveChatWidget';
 
 // Mock data for fallback
 const mockChannel = {
@@ -59,8 +60,8 @@ function OverviewPage() {
       const [channelsRes, showsRes, hostsRes, guestsRes] = await Promise.all([
         axios.get('http://localhost:3000/channels/my-channels', config).catch(() => ({ data: [mockChannel] })),
         axios.get('http://localhost:3000/shows', config).catch(() => ({ data: mockShows })),
-        axios.get('http://localhost:3000/persons', config).catch(() => ({ data: mockHosts })),
-        axios.get('http://localhost:3000/guests', config).catch(() => ({ data: [] }))
+        axios.get('http://localhost:3000/persons/my-persons', config).catch(() => ({ data: mockHosts })),
+        axios.get('http://localhost:3000/guests/my-guests', config).catch(() => ({ data: [] }))
       ]);
 
       const channelsData = channelsRes.data || [mockChannel];
@@ -527,6 +528,9 @@ function OverviewPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Live Chat Widget - Floating */}
+      {channel && <LiveChatWidget channelId={channel.id} compact />}
     </div>
   );
 }

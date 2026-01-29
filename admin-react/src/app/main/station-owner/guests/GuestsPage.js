@@ -74,7 +74,7 @@ function GuestsPage() {
       }
 
       console.log('🔄 Loading guests from API...');
-      const { data } = await axios.get(`${API_URL}/guests`, {
+      const { data } = await axios.get(`${API_URL}/guests/my-guests`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 10000
       });

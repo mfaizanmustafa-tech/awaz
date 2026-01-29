@@ -147,6 +147,13 @@ const navigationConfig = [
         icon: 'heroicons-outline:chart-bar',
         url: '/station-owner/analytics',
       },
+      {
+        id: 'station-owner.engagement',
+        title: 'Engagement',
+        type: 'item',
+        icon: 'heroicons-outline:heart',
+        url: '/station-owner/engagement',
+      },
     ],
   },
   {

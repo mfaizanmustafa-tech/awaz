@@ -67,7 +67,7 @@ function ShowsPage() {
       const token = localStorage.getItem('jwt_access_token');
       if (!token) return;
 
-      const { data } = await axios.get(`${API_URL}/persons`, {
+      const { data } = await axios.get(`${API_URL}/persons/my-persons`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -84,7 +84,7 @@ function ShowsPage() {
       const token = localStorage.getItem('jwt_access_token');
       if (!token) return;
 
-      const { data } = await axios.get(`${API_URL}/guests`, {
+      const { data } = await axios.get(`${API_URL}/guests/my-guests`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -134,24 +134,51 @@ function ShowsPage() {
         return;
       }
 
-      console.log('Loading shows from API...');
-      const { data } = await axios.get(`${API_URL}/shows`, {
+      console.log('🔍 Loading user channels...');
+      // First, get the user's channels
+      const channelsResponse = await axios.get(`${API_URL}/channels/my-channels`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000
       });
       
-      console.log('Loaded shows:', data);
+      console.log('✅ Loaded channels:', channelsResponse.data);
+      console.log('📊 Number of channels:', channelsResponse.data?.length || 0);
       
-      if (data && Array.isArray(data) && data.length > 0) {
-        setAllShows(data);
-      } else {
-        console.warn('No shows returned from API, using mock data');
-        loadMockData();
+      if (!channelsResponse.data || channelsResponse.data.length === 0) {
+        console.warn('⚠️ No channels found for user');
+        setAllShows([]);
+        return;
       }
+
+      // Then, load shows for each channel
+      console.log('🔍 Loading shows for each channel...');
+      const allShowsPromises = channelsResponse.data.map(channel => {
+        console.log(`  📡 Fetching shows for channel: ${channel.name} (${channel.id})`);
+        return axios.get(`${API_URL}/shows/channel/${channel.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        }).catch(error => {
+          console.error(`❌ Error loading shows for channel ${channel.id}:`, error.message);
+          return { data: [] };
+        });
+      });
+
+      const showsResponses = await Promise.all(allShowsPromises);
+      
+      // Combine all shows from all channels
+      const userShows = showsResponses.flatMap(response => response.data || []);
+      
+      console.log('✅ Loaded shows for user channels:', userShows);
+      console.log('📊 Total shows:', userShows.length);
+      userShows.forEach((show, idx) => {
+        console.log(`  ${idx + 1}. ${show.title} (ID: ${show.id})`);
+      });
+      
+      setAllShows(userShows);
     } catch (error) {
-      console.error('Error loading shows:', error.message);
-      console.warn('Falling back to mock data');
-      loadMockData();
+      console.error('❌ Error loading shows:', error.message);
+      console.warn('⚠️ Falling back to empty shows list');
+      setAllShows([]);
     }
   };
 
